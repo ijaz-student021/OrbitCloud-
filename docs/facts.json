@@ -1,0 +1,12 @@
+{
+  "ncVersion": "34.0.5",
+  "lanUrl": "https://192.168.100.181:8443",
+  "lanHost": "192.168.100.181",
+  "testDate": "6 November 2026",
+  "backupLine": "`./orbit backup` pauses writes, dumps the database, archives configuration and user files and writes SHA-256 checksums to `backups/<date-time>/`; `./orbit restore` verifies the checksums first. Tested: a file was permanently deleted (trash emptied), the backup was restored, and the file returned byte-identical.",
+  "studentName": "Ijaz Ahmad",
+  "regNo": "83500",
+  "enrolment": "03-134231-021",
+  "groupNo": "3",
+  "instructor": "Dr Nadeem Sarwar"
+}

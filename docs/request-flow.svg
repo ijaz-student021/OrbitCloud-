@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1215" viewBox="0 0 1600 1215" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"><defs><marker id="arr-1B1F3B" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#1B1F3B"/></marker><marker id="arrs-1B1F3B" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0 L0 5 L10 10 z" fill="#1B1F3B"/></marker><marker id="arr-3B3FD8" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#3B3FD8"/></marker><marker id="arrs-3B3FD8" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0 L0 5 L10 10 z" fill="#3B3FD8"/></marker><marker id="arr-0B8F7F" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#0B8F7F"/></marker><marker id="arrs-0B8F7F" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0 L0 5 L10 10 z" fill="#0B8F7F"/></marker><marker id="arr-B45309" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#B45309"/></marker><marker id="arrs-B45309" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0 L0 5 L10 10 z" fill="#B45309"/></marker><marker id="arr-5B6178" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#5B6178"/></marker><marker id="arrs-5B6178" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0 L0 5 L10 10 z" fill="#5B6178"/></marker></defs><rect width="1600" height="1215" fill="#ffffff"/>
+<text x="40" y="56" font-size="32" font-weight="800" fill="#3B3FD8" text-anchor="start" >ORBIT CLOUD</text><text x="292" y="56" font-size="24" font-weight="400" fill="#1B1F3B" text-anchor="start" >Request lifecycle — ADD · UPDATE · DOWNLOAD · DELETE</text>
+<text x="40" y="86" font-size="15" font-weight="400" fill="#5B6178" text-anchor="start" >The order of events when a client works on a file. Time flows downward.</text>
+<rect x="55" y="120" width="190" height="56" rx="12" fill="#EAECF4" stroke="#B9BED6" stroke-width="1.5"/>
+<text x="150" y="145" font-size="15.5" font-weight="700" fill="#1B1F3B" text-anchor="middle" >Client</text>
+<text x="150" y="164" font-size="11.5" font-weight="400" fill="#5B6178" text-anchor="middle" >home / office / mobile</text>
+<line x1="150" y1="176" x2="150" y2="1175" stroke="#B9BED6" stroke-width="1.6" stroke-dasharray="5 6"/>
+<rect x="355" y="120" width="190" height="56" rx="12" fill="#3B3FD8" stroke="#3B3FD8" stroke-width="1.5"/>
+<text x="450" y="145" font-size="15.5" font-weight="700" fill="#fff" text-anchor="middle" >Gateway</text>
+<text x="450" y="164" font-size="11.5" font-weight="400" fill="#fff" text-anchor="middle" >Caddy · HTTPS</text>
+<line x1="450" y1="176" x2="450" y2="1175" stroke="#B9BED6" stroke-width="1.6" stroke-dasharray="5 6"/>
+<rect x="665" y="120" width="190" height="56" rx="12" fill="#3B3FD8" stroke="#3B3FD8" stroke-width="1.5"/>
+<text x="760" y="145" font-size="15.5" font-weight="700" fill="#fff" text-anchor="middle" >Application</text>
+<text x="760" y="164" font-size="11.5" font-weight="400" fill="#fff" text-anchor="middle" >Nextcloud</text>
+<line x1="760" y1="176" x2="760" y2="1175" stroke="#B9BED6" stroke-width="1.6" stroke-dasharray="5 6"/>
+<rect x="915" y="120" width="190" height="56" rx="12" fill="#0B8F7F" stroke="#0B8F7F" stroke-width="1.5"/>
+<text x="1010" y="145" font-size="15.5" font-weight="700" fill="#fff" text-anchor="middle" >Cache</text>
+<text x="1010" y="164" font-size="11.5" font-weight="400" fill="#fff" text-anchor="middle" >Redis</text>
+<line x1="1010" y1="176" x2="1010" y2="1175" stroke="#B9BED6" stroke-width="1.6" stroke-dasharray="5 6"/>
+<rect x="1145" y="120" width="190" height="56" rx="12" fill="#0B8F7F" stroke="#0B8F7F" stroke-width="1.5"/>
+<text x="1240" y="145" font-size="15.5" font-weight="700" fill="#fff" text-anchor="middle" >Database</text>
+<text x="1240" y="164" font-size="11.5" font-weight="400" fill="#fff" text-anchor="middle" >PostgreSQL</text>
+<line x1="1240" y1="176" x2="1240" y2="1175" stroke="#B9BED6" stroke-width="1.6" stroke-dasharray="5 6"/>
+<rect x="1375" y="120" width="190" height="56" rx="12" fill="#0B8F7F" stroke="#0B8F7F" stroke-width="1.5"/>
+<text x="1470" y="145" font-size="15.5" font-weight="700" fill="#fff" text-anchor="middle" >File storage</text>
+<text x="1470" y="164" font-size="11.5" font-weight="400" fill="#fff" text-anchor="middle" >volume orbit_data</text>
+<line x1="1470" y1="176" x2="1470" y2="1175" stroke="#B9BED6" stroke-width="1.6" stroke-dasharray="5 6"/>
+<rect x="30" y="205" width="1540" height="442" rx="10" fill="#F3F4FF" stroke="none" stroke-width="0"/><text x="48" y="227" font-size="13" font-weight="700" fill="#3B3FD8" text-anchor="start" letter-spacing="0.8">A   ADD  /  UPDATE   (upload a file)</text>
+<line x1="150" y1="257" x2="443" y2="257" stroke="#1B1F3B" stroke-width="2" marker-end="url(#arr-1B1F3B)"/>
+<text x="300.0" y="248" font-size="12.8" font-weight="600" fill="#1B1F3B" text-anchor="middle" >PUT /remote.php/dav/files/office/report.pdf</text>
+<text x="300.0" y="274" font-size="11.5" font-weight="400" fill="#5B6178" text-anchor="middle" >HTTPS (TLS) + username &amp; password</text>
+<line x1="450" y1="303" x2="753" y2="303" stroke="#3B3FD8" stroke-width="2" marker-end="url(#arr-3B3FD8)"/>
+<text x="605.0" y="294" font-size="12.8" font-weight="600" fill="#3B3FD8" text-anchor="middle" >forward request</text>
+<text x="605.0" y="320" font-size="11.5" font-weight="400" fill="#5B6178" text-anchor="middle" >plain HTTP inside the private network</text>
+<line x1="760" y1="349" x2="1233" y2="349" stroke="#0B8F7F" stroke-width="2" marker-end="url(#arr-0B8F7F)"/>
+<text x="1000.0" y="340" font-size="12.8" font-weight="600" fill="#0B8F7F" text-anchor="middle" >who is this user? may they write? quota left?</text>
+<line x1="1240" y1="387" x2="767" y2="387" stroke="#0B8F7F" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arr-0B8F7F)"/>
+<text x="1000.0" y="378" font-size="12.8" font-weight="400" fill="#5B6178" text-anchor="middle" >OK — 9.8 GB free</text>
+<line x1="760" y1="427" x2="1003" y2="427" stroke="#0B8F7F" stroke-width="2" marker-end="url(#arr-0B8F7F)"/>
+<text x="885.0" y="418" font-size="12.8" font-weight="600" fill="#0B8F7F" text-anchor="middle" >lock the file path</text>
+<line x1="760" y1="467" x2="1463" y2="467" stroke="#0B8F7F" stroke-width="2" marker-end="url(#arr-0B8F7F)"/>
+<text x="1115.0" y="458" font-size="12.8" font-weight="600" fill="#0B8F7F" text-anchor="middle" >write report.pdf   (UPDATE: old copy moved to versions)</text>
+<line x1="760" y1="507" x2="1233" y2="507" stroke="#0B8F7F" stroke-width="2" marker-end="url(#arr-0B8F7F)"/>
+<text x="1000.0" y="498" font-size="12.8" font-weight="600" fill="#0B8F7F" text-anchor="middle" >save metadata: size · owner · etag · time</text>
+<line x1="760" y1="545" x2="1003" y2="545" stroke="#0B8F7F" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arr-0B8F7F)"/>
+<text x="885.0" y="536" font-size="12.8" font-weight="400" fill="#5B6178" text-anchor="middle" >release the lock</text>
+<line x1="760" y1="585" x2="457" y2="585" stroke="#3B3FD8" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arr-3B3FD8)"/>
+<text x="605.0" y="576" font-size="12.8" font-weight="400" fill="#5B6178" text-anchor="middle" >201 Created   (204 if it replaced a file)</text>
+<line x1="450" y1="621" x2="157" y2="621" stroke="#1B1F3B" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arr-1B1F3B)"/>
+<text x="300.0" y="612" font-size="12.8" font-weight="400" fill="#5B6178" text-anchor="middle" >201 Created  ✔  file is now in the cloud</text>
+<rect x="30" y="668" width="1540" height="218" rx="10" fill="#EEF9F7" stroke="none" stroke-width="0"/><text x="48" y="690" font-size="13" font-weight="700" fill="#0B8F7F" text-anchor="start" letter-spacing="0.8">B   DOWNLOAD   (fetch a file)</text>
+<line x1="150" y1="720" x2="753" y2="720" stroke="#1B1F3B" stroke-width="2" marker-end="url(#arr-1B1F3B)"/>
+<text x="455.0" y="711" font-size="12.8" font-weight="600" fill="#1B1F3B" text-anchor="middle" >GET /…/report.pdf    (via Gateway, HTTPS)</text>
+<line x1="760" y1="760" x2="1233" y2="760" stroke="#0B8F7F" stroke-width="2" marker-end="url(#arr-0B8F7F)"/>
+<text x="1000.0" y="751" font-size="12.8" font-weight="600" fill="#0B8F7F" text-anchor="middle" >is this user allowed to read it?</text>
+<line x1="1240" y1="798" x2="767" y2="798" stroke="#0B8F7F" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arr-0B8F7F)"/>
+<text x="1000.0" y="789" font-size="12.8" font-weight="400" fill="#5B6178" text-anchor="middle" >yes</text>
+<line x1="1470" y1="836" x2="767" y2="836" stroke="#0B8F7F" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arr-0B8F7F)"/>
+<text x="1115.0" y="827" font-size="12.8" font-weight="400" fill="#5B6178" text-anchor="middle" >read file bytes</text>
+<line x1="760" y1="876" x2="157" y2="876" stroke="#1B1F3B" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arr-1B1F3B)"/>
+<text x="455.0" y="867" font-size="12.8" font-weight="400" fill="#5B6178" text-anchor="middle" >200 OK + file content   (identical bytes — verified by SHA-256 in ./orbit test)</text>
+<rect x="30" y="910" width="1540" height="240" rx="10" fill="#FEF6EC" stroke="none" stroke-width="0"/><text x="48" y="932" font-size="13" font-weight="700" fill="#B45309" text-anchor="start" letter-spacing="0.8">C   DELETE   (remove a file — recoverable)</text>
+<line x1="150" y1="962" x2="753" y2="962" stroke="#1B1F3B" stroke-width="2" marker-end="url(#arr-1B1F3B)"/>
+<text x="455.0" y="953" font-size="12.8" font-weight="600" fill="#1B1F3B" text-anchor="middle" >DELETE /…/report.pdf    (via Gateway, HTTPS)</text>
+<line x1="760" y1="1004" x2="1463" y2="1004" stroke="#0B8F7F" stroke-width="2" marker-end="url(#arr-0B8F7F)"/>
+<text x="1115.0" y="995" font-size="12.8" font-weight="600" fill="#0B8F7F" text-anchor="middle" >move file to the trash bin (not erased yet)</text>
+<line x1="760" y1="1044" x2="1233" y2="1044" stroke="#0B8F7F" stroke-width="2" marker-end="url(#arr-0B8F7F)"/>
+<text x="1000.0" y="1035" font-size="12.8" font-weight="600" fill="#0B8F7F" text-anchor="middle" >mark as deleted · record in trash table</text>
+<line x1="760" y1="1084" x2="157" y2="1084" stroke="#1B1F3B" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arr-1B1F3B)"/>
+<text x="455.0" y="1075" font-size="12.8" font-weight="400" fill="#5B6178" text-anchor="middle" >204 No Content  ✔   (restore any time before the trash expires)</text>
+<text x="48" y="1132" font-size="12.5" font-weight="400" fill="#5B6178" text-anchor="start" >Behind the scenes:  orbit-cron later empties expired trash and old versions  ·  ./orbit backup protects everything in all three steps.</text>
+</svg>

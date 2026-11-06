@@ -1,0 +1,59 @@
+
+[1mORBIT CLOUD — end-to-end test[0m   2026-11-06 15:12:59
+  home   client → https://localhost:8443  (user: home)
+  office client → https://192.168.100.181:8443  (user: office)
+  transport     → SSL connection using TLSv1.3 / AEAD-CHACHA20-POLY1305-SHA256 / [blank] / UNDEF
+
+[1m1. Security — only authenticated clients get in[0m
+  [32m✔[0m No credentials is rejected  [HTTP 401]
+  [32m✔[0m Wrong password is rejected  [HTTP 401]
+  [32m✔[0m Home client logs in with valid credentials  [HTTP 207]
+
+[1m2. ADD — upload a folder and a file from Home[0m
+  [32m✔[0m Create folder 'orbit-e2e'  [HTTP 201]
+  [32m✔[0m Upload hello.txt  [HTTP 201]
+  [32m✔[0m File appears in the folder listing
+
+[1m3. DOWNLOAD — fetch it back and verify integrity[0m
+  [32m✔[0m Download hello.txt  [HTTP 200]
+  [32m✔[0m Downloaded copy is byte-identical to the original  [sha256 b92222a72be8…]
+
+[1m3b. Isolation — one client cannot touch another client's files[0m
+  [32m✔[0m Office cannot READ Home's file  [HTTP 404]
+  [32m✔[0m Office cannot WRITE into Home's folder  [HTTP 404]
+  [32m✔[0m Office cannot DELETE Home's file  [HTTP 404]
+  [32m✔[0m Office cannot LIST Home's files
+  [32m✔[0m Home's file is untouched after the intrusion attempts  [HTTP 200]
+
+[1m4. UPDATE — overwrite the file, old version is kept[0m
+  [32m✔[0m Upload new content over hello.txt  [HTTP 204]
+  [32m✔[0m Download returns the NEW content  [sha256 d4320b3b60a1…]
+  [32m✔[0m Earlier version is kept: 1 stored version(s), and version 1 downloads byte-identical to the original upload
+
+[1m5. Large file — 25 MB round trip[0m
+  [32m✔[0m Upload 25 MB file  [HTTP 201]
+  [32m✔[0m 25 MB download is byte-identical  [sha256 09f29568d9f6…]
+
+[1m6. SHARE — Home shares a file read-only with Office (Office connects from another device)[0m
+  [32m✔[0m Create share Home → Office (read-only)  [HTTP 200]
+  [32m✔[0m Office client downloads the shared file via https://192.168.100.181:8443  [HTTP 200]
+  [32m✔[0m Office copy matches Home's latest version  [sha256 d4320b3b60a1…]
+  [32m✔[0m Office cannot modify a read-only share  [HTTP 403]
+  [32m✔[0m After un-sharing, Office loses access  [HTTP 404]
+
+[1m7. DELETE — remove a file, then recover it from the trash bin[0m
+  [32m✔[0m Delete hello.txt  [HTTP 204]
+  [32m✔[0m File is gone from the cloud  [HTTP 404]
+  [32m✔[0m Deleted file is held in the trash bin (trash/hello.txt.d1793959992)
+  [32m✔[0m Restore hello.txt from trash  [HTTP 201]
+  [32m✔[0m Restored file has the latest content  [sha256 d4320b3b60a1…]
+
+[1m8. Metering — each client has a storage quota[0m
+  [32m✔[0m Home quota: 62 MB used, 5057 MB still available (limit 5 GB)
+
+[1m9. Cleanup[0m
+  [32m✔[0m Remove test folder  [HTTP 204]
+  [32m✔[0m Empty trash  [HTTP 204]
+
+[1mResult: 31 passed, 0 failed[0m
+
