@@ -1,0 +1,24 @@
+# ORBIT CLOUD gateway.
+# ORBIT_HOSTS is a comma-separated list of every name/IP the cloud is reached by
+# (localhost, LAN IP, <mac-name>.local, VPN name…). `./orbit up` keeps it fresh.
+{
+	# Only :443 is published to the host; HTTP→HTTPS redirect would point at the
+	# wrong port (8443), so it is disabled. The cloud is HTTPS-only.
+	auto_https disable_redirects
+
+	# Browsers send no server name (SNI) when you type an IP address, and inside
+	# Docker's NAT Caddy cannot see the real destination IP. Serve the certificate
+	# of the primary address (the LAN IP) in that case.
+	default_sni {$ORBIT_PRIMARY_HOST}
+}
+
+{$ORBIT_HOSTS} {
+	# Certificates come from Caddy's private CA (see `./orbit trust-ca`).
+	tls internal
+
+	# CalDAV / CardDAV discovery for calendar & contacts clients.
+	redir /.well-known/carddav /remote.php/dav 301
+	redir /.well-known/caldav  /remote.php/dav 301
+
+	reverse_proxy app:80
+}

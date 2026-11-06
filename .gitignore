@@ -1,0 +1,13 @@
+.env
+backups/
+certs/
+node_modules/
+*.log
+.DS_Store
+
+# the instructor's assignment paper is an input, not part of the project
+Assignment3_icc.docx
+# temporary build output
+docs/video-work/
+docs/phone/_failed.png
+docs/screenshots/_failed-state.png

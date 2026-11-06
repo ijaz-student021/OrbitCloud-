@@ -1,0 +1,370 @@
+#!/usr/bin/env bash
+# ORBIT CLOUD — control script.
+#
+#   ./orbit setup        create .env with freshly generated secrets
+#   ./orbit up           start the cloud, provision users/theme/quotas, print URLs
+#   ./orbit down         stop the cloud (data is kept)
+#   ./orbit status       health of every service + per-client storage usage
+#   ./orbit urls         where to open the cloud from home / office
+#   ./orbit credentials  show login names and passwords
+#   ./orbit backup       consistent backup (database + files) into ./backups
+#   ./orbit restore DIR  restore a backup made by `./orbit backup`
+#   ./orbit trust-ca     export the HTTPS root certificate for your devices
+#   ./orbit share-ca     let a phone download the certificate over Wi-Fi (Android/iPhone)
+#   ./orbit test         end-to-end test of ADD / UPDATE / DOWNLOAD / DELETE
+#   ./orbit logs [svc]   follow logs
+#   ./orbit destroy      delete the cloud AND all its data
+#
+# Written for bash 3.2 (macOS default) and newer.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+CLOUD_NAME_DEFAULT="ORBIT CLOUD"
+SLOGAN_DEFAULT="Your files. Your cloud. Anywhere."
+
+c_ok()   { printf '\033[32m✔\033[0m %s\n' "$*"; }
+c_info() { printf '\033[36m➜\033[0m %s\n' "$*"; }
+c_warn() { printf '\033[33m!\033[0m %s\n' "$*" >&2; }
+die()    { printf '\033[31m✘ %s\033[0m\n' "$*" >&2; exit 1; }
+
+need_docker() {
+  command -v docker >/dev/null || die "Docker is not installed."
+  docker info >/dev/null 2>&1 || die "Docker daemon is not running. Start Docker Desktop and retry."
+}
+
+load_env() {
+  [ -f .env ] || die "No .env yet — run ./orbit setup first."
+  set -a; . ./.env; set +a
+}
+
+set_env() { # set_env KEY VALUE  (rewrites .env, keeps it private)
+  local key="$1" val="$2" tmp
+  tmp="$(mktemp)"
+  { grep -v "^${key}=" .env 2>/dev/null || true; printf '%s="%s"\n' "$key" "$val"; } > "$tmp"
+  cat "$tmp" > .env && rm -f "$tmp" && chmod 600 .env
+}
+
+secret() { openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | cut -c1-24; }
+
+occ() { docker compose exec -T -u www-data app php occ "$@"; }
+
+lan_ip() {
+  local ip=""
+  ip="$(ipconfig getifaddr en0 2>/dev/null || true)"
+  [ -n "$ip" ] || ip="$(ipconfig getifaddr en1 2>/dev/null || true)"
+  [ -n "$ip" ] || ip="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
+  printf '%s' "$ip"
+}
+
+# Every name/IP this cloud answers to (also used as TLS names and trusted domains).
+compute_hosts() {
+  local hosts="localhost, 127.0.0.1" ip name
+  ip="$(lan_ip)"
+  name="$(scutil --get LocalHostName 2>/dev/null || hostname -s 2>/dev/null || true)"
+  [ -z "$ip" ]   || hosts="$hosts, $ip"
+  [ -z "$name" ] || hosts="$hosts, ${name}.local"
+  [ -z "${ORBIT_EXTRA_HOSTS:-}" ] || hosts="$hosts, $ORBIT_EXTRA_HOSTS"
+  printf '%s' "$hosts"
+}
+
+cmd_setup() {
+  need_docker
+  if [ -f .env ]; then
+    c_warn ".env already exists — keeping existing secrets. (Delete it to regenerate; this would NOT change an already-installed cloud.)"
+    return 0
+  fi
+  umask 077
+  : > .env
+  set_env CLOUD_NAME "$CLOUD_NAME_DEFAULT"
+  set_env CLOUD_SLOGAN "$SLOGAN_DEFAULT"
+  set_env NC_TAG "34-apache"
+  set_env HTTPS_PORT "8443"
+  set_env BIND_ADDRESS "0.0.0.0"          # 127.0.0.1 = this computer only
+  set_env ORBIT_SUBNET "172.30.77.0/24"
+  set_env PHONE_REGION "PK"
+  set_env ADMIN_USER "orbitadmin"
+  set_env ADMIN_PASSWORD "$(secret)"
+  set_env DB_PASSWORD "$(secret)"
+  set_env REDIS_PASSWORD "$(secret)"
+  set_env CLIENT_HOME_USER "home"
+  set_env CLIENT_HOME_PASSWORD "$(secret)"
+  set_env CLIENT_OFFICE_USER "office"
+  set_env CLIENT_OFFICE_PASSWORD "$(secret)"
+  set_env ORBIT_EXTRA_HOSTS ""
+  set_env ORBIT_HOSTS "localhost"
+  c_ok "Created .env (permissions 600) with generated passwords"
+}
+
+wait_for_occ() {
+  local i
+  for i in $(seq 1 60); do
+    if occ status 2>/dev/null | grep -q 'installed: true'; then return 0; fi
+    sleep 3
+  done
+  die "Nextcloud did not become ready in time. Check: ./orbit logs app"
+}
+
+provision() {
+  c_info "Provisioning cloud (branding, network, clients, quotas)…"
+  wait_for_occ
+
+  # --- branding -------------------------------------------------------------
+  occ theming:config name   "$CLOUD_NAME"   >/dev/null
+  occ theming:config slogan "$CLOUD_SLOGAN" >/dev/null
+  occ theming:config primary_color "#3B3FD8" >/dev/null 2>&1 || occ theming:config color "#3B3FD8" >/dev/null
+  if [ -f branding/logo.svg ]; then
+    docker compose cp branding/logo.svg app:/tmp/orbit-logo.svg >/dev/null 2>&1 || true
+    occ theming:config logo       /tmp/orbit-logo.svg >/dev/null 2>&1 || c_warn "logo upload skipped"
+    occ theming:config logoheader /tmp/orbit-logo.svg >/dev/null 2>&1 || true
+    occ theming:config favicon    /tmp/orbit-logo.svg >/dev/null 2>&1 || true
+  fi
+
+  # --- first-login experience ----------------------------------------------
+  # No product-tour pop-up; new clients start with ORBIT CLOUD's own welcome files.
+  occ app:disable firstrunwizard >/dev/null 2>&1 || true
+  if [ -d branding/skeleton ]; then
+    docker compose exec -T app rm -rf /var/www/html/orbit-skeleton >/dev/null 2>&1 || true
+    docker compose cp branding/skeleton app:/var/www/html/orbit-skeleton >/dev/null 2>&1 \
+      && docker compose exec -T app chown -R www-data:www-data /var/www/html/orbit-skeleton \
+      && occ config:system:set skeletondirectory --value=/var/www/html/orbit-skeleton >/dev/null \
+      || c_warn "custom welcome files skipped"
+  fi
+
+  # --- network / proxy trust -----------------------------------------------
+  local i=0 h IFS_SAVE="$IFS"
+  IFS=','
+  for h in $ORBIT_HOSTS; do
+    h="$(echo "$h" | xargs)"
+    [ -n "$h" ] || continue
+    occ config:system:set trusted_domains "$i" --value="$h" >/dev/null
+    i=$((i+1))
+  done
+  IFS="$IFS_SAVE"
+  local j
+  for j in $(seq "$i" $((i+8))); do occ config:system:delete trusted_domains "$j" >/dev/null 2>&1 || true; done
+  local primary="${PRIMARY_HOST:-$(lan_ip)}"; [ -n "$primary" ] || primary="localhost"
+  occ config:system:set overwrite.cli.url --value="https://${primary}:${HTTPS_PORT}" >/dev/null
+  occ config:system:set overwriteprotocol --value=https >/dev/null
+  occ config:system:set default_phone_region --value="${PHONE_REGION:-PK}" >/dev/null
+  occ config:system:set maintenance_window_start --type=integer --value=1 >/dev/null
+  occ background:cron >/dev/null
+
+  # --- first-time-only tuning ----------------------------------------------
+  if [ "$(occ config:app:get orbitcloud provisioned 2>/dev/null || true)" != "1" ]; then
+    occ db:add-missing-indices >/dev/null 2>&1 || true
+    occ maintenance:repair --include-expensive >/dev/null 2>&1 || true
+    occ config:app:set orbitcloud provisioned --value=1 >/dev/null
+  fi
+
+  # --- clients (tenants) ----------------------------------------------------
+  occ group:add "Clients" >/dev/null 2>&1 || true
+  ensure_client "$CLIENT_HOME_USER"   "$CLIENT_HOME_PASSWORD"   "Home Client"   "5 GB"
+  ensure_client "$CLIENT_OFFICE_USER" "$CLIENT_OFFICE_PASSWORD" "Office Client" "10 GB"
+  c_ok "Provisioned: admin '$ADMIN_USER' + clients '$CLIENT_HOME_USER' (5 GB) and '$CLIENT_OFFICE_USER' (10 GB)"
+}
+
+ensure_client() { # user password "Display Name" quota
+  local user="$1" pass="$2" display="$3" quota="$4"
+  if occ user:info "$user" >/dev/null 2>&1; then
+    :
+  else
+    docker compose exec -T -u www-data -e OC_PASS="$pass" app \
+      php occ user:add --password-from-env --display-name="$display" --group=Clients "$user" >/dev/null
+  fi
+  occ user:setting "$user" files quota "$quota" >/dev/null
+}
+
+cmd_up() {
+  need_docker
+  [ -f .env ] || cmd_setup
+  load_env
+  # Re-detect network identity (the LAN IP can change between sessions).
+  local hosts; hosts="$(compute_hosts)"
+  set_env ORBIT_HOSTS "$hosts"
+  ORBIT_HOSTS="$hosts"
+  ORBIT_PRIMARY_HOST="$(lan_ip)"; [ -n "$ORBIT_PRIMARY_HOST" ] || ORBIT_PRIMARY_HOST="localhost"
+  set_env ORBIT_PRIMARY_HOST "$ORBIT_PRIMARY_HOST"
+  c_info "Starting ${CLOUD_NAME}… (the first start downloads images — several minutes on a slow connection)"
+  # Image downloads can drop on flaky networks — retry; finished layers are kept.
+  local attempt perr; perr="$(mktemp)"
+  for attempt in 1 2 3 4 5; do
+    if docker compose pull --quiet --ignore-buildable 2>"$perr"; then break; fi
+    [ "$attempt" -lt 5 ] || { cat "$perr" >&2; rm -f "$perr"; die "Could not download images. Check your internet connection and retry."; }
+    c_warn "Download interrupted (attempt $attempt/5) — retrying…"; sleep 3
+  done
+  rm -f "$perr"
+  docker compose up -d --build --wait --wait-timeout 900 --quiet-pull >/dev/null || { docker compose ps; die "Some services are unhealthy. See: ./orbit logs"; }
+  provision
+  docker compose restart gateway >/dev/null   # pick up a changed host list
+  export_ca || true
+  c_ok "${CLOUD_NAME} is online"
+  cmd_urls
+}
+
+export_ca() {
+  local i
+  for i in $(seq 1 20); do
+    if docker compose cp gateway:/data/caddy/pki/authorities/local/root.crt certs/orbit-root-ca.crt >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+cmd_urls() {
+  load_env
+  local ip name
+  ip="$(lan_ip)"; name="$(scutil --get LocalHostName 2>/dev/null || hostname -s)"
+  echo
+  echo "  ${CLOUD_NAME} — open from…"
+  echo "    this computer :  https://localhost:${HTTPS_PORT}"
+  [ -z "$ip" ]   || echo "    home / office :  https://${ip}:${HTTPS_PORT}     (any device on the same network)"
+  echo "                     https://${name}.local:${HTTPS_PORT}"
+  echo "    anywhere      :  add a VPN/tunnel name to ORBIT_EXTRA_HOSTS in .env (see README)"
+  echo
+  echo "  The browser warns about the certificate until you run  ./orbit trust-ca"
+  echo "  Logins:  ./orbit credentials"
+  echo
+}
+
+cmd_credentials() {
+  load_env
+  printf '\n  %-18s %-14s %s\n' "ROLE" "USER" "PASSWORD"
+  printf '  %-18s %-14s %s\n' "Provider (admin)" "$ADMIN_USER" "$ADMIN_PASSWORD"
+  printf '  %-18s %-14s %s\n' "Client – home"    "$CLIENT_HOME_USER" "$CLIENT_HOME_PASSWORD"
+  printf '  %-18s %-14s %s\n' "Client – office"  "$CLIENT_OFFICE_USER" "$CLIENT_OFFICE_PASSWORD"
+  echo
+}
+
+cmd_status() {
+  need_docker; load_env
+  echo; docker compose ps --format 'table {{.Name}}\t{{.Service}}\t{{.Status}}\t{{.Ports}}'
+  echo; occ status
+  echo; echo "Client storage usage:"; occ user:report 2>/dev/null || true
+  echo; docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}'
+}
+
+cmd_backup() {
+  need_docker; load_env
+  local ts dir
+  ts="$(date +%Y%m%d-%H%M%S)"; dir="backups/$ts"
+  mkdir -p "$dir"
+  c_info "Backup → $dir (cloud goes read-only for a moment)"
+  occ maintenance:mode --on >/dev/null
+  trap 'occ maintenance:mode --off >/dev/null 2>&1 || true' EXIT
+  docker compose exec -T db pg_dump -U nextcloud -Fc nextcloud > "$dir/database.dump"
+  # Only state is backed up (config, user data, extra apps, themes) — the program code comes from the image.
+  docker compose exec -T app sh -c 'cd /var/www/html && tar czf - $(ls -d config data custom_apps themes 2>/dev/null)' > "$dir/files.tar.gz"
+  occ maintenance:mode --off >/dev/null
+  trap - EXIT
+  ( cd "$dir" && shasum -a 256 database.dump files.tar.gz > SHA256SUMS )
+  c_ok "Backup complete: $(du -sh "$dir" | cut -f1) in $dir"
+}
+
+cmd_restore() {
+  need_docker; load_env
+  local dir="${1:-}"
+  [ -n "$dir" ] && [ -f "$dir/database.dump" ] && [ -f "$dir/files.tar.gz" ] || die "Usage: ./orbit restore backups/<timestamp>"
+  ( cd "$dir" && shasum -a 256 -c SHA256SUMS >/dev/null ) || die "Backup checksum mismatch — refusing to restore."
+  printf 'This REPLACES the current cloud data with %s. Type "restore" to continue: ' "$dir"
+  read -r answer; [ "$answer" = "restore" ] || die "Aborted."
+  c_info "Restoring from $dir …"
+  # Stop everything that writes, then replace the files through a throw-away container
+  # that shares the app's volumes (the archive is streamed in — no host-folder mounts).
+  docker compose stop cron app >/dev/null
+  docker run --rm -i --volumes-from orbit-app --entrypoint sh "nextcloud:${NC_TAG:-34-apache}" -c \
+    'cd /var/www/html && rm -rf config custom_apps themes && find data -mindepth 1 -maxdepth 1 -exec rm -rf {} + ; tar xzf -' < "$dir/files.tar.gz"
+  # Keep the original table owners: Nextcloud runs as its own restricted DB role (oc_<admin>).
+  docker compose exec -T db pg_restore -U nextcloud -d nextcloud --clean --if-exists < "$dir/database.dump"
+  # That role's name and password live in the restored config.php — make PostgreSQL agree with it
+  # (a no-op on the same installation; essential when restoring onto a freshly installed cloud).
+  local creds dbuser dbpass
+  creds="$(docker run --rm --volumes-from orbit-app --entrypoint php "nextcloud:${NC_TAG:-34-apache}" -r 'include "/var/www/html/config/config.php"; echo $CONFIG["dbuser"], "\n", $CONFIG["dbpassword"];')"
+  dbuser="$(printf '%s\n' "$creds" | sed -n 1p)"; dbpass="$(printf '%s\n' "$creds" | sed -n 2p)"
+  [ -n "$dbuser" ] && [ -n "$dbpass" ] || die "Could not read the database login from the restored config.php"
+  docker compose exec -T db psql -U nextcloud -d nextcloud -v ON_ERROR_STOP=1 -c "ALTER ROLE \"${dbuser}\" WITH PASSWORD '${dbpass}'" >/dev/null
+  docker compose start app >/dev/null
+  wait_for_occ
+  occ maintenance:data-fingerprint >/dev/null 2>&1 || true
+  occ maintenance:mode --off >/dev/null
+  docker compose start cron >/dev/null
+  c_ok "Restore complete."
+}
+
+cmd_trust_ca() {
+  [ -f certs/orbit-root-ca.crt ] || export_ca || die "Start the cloud first: ./orbit up"
+  echo
+  echo "  Root certificate: $PWD/certs/orbit-root-ca.crt"
+  echo "  macOS  (this Mac):   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain certs/orbit-root-ca.crt"
+  echo "  Windows (PowerShell, admin):   Import-Certificate -FilePath orbit-root-ca.crt -CertStoreLocation Cert:\\LocalMachine\\Root"
+  echo "  Phones (Android / iPhone): run  ./orbit share-ca  and open the address it prints on the phone."
+  echo
+}
+
+cmd_share_ca() {
+  [ -f certs/orbit-root-ca.crt ] || export_ca || die "Start the cloud first: ./orbit up"
+  local ip port=8765 tmp
+  ip="$(lan_ip)"; [ -n "$ip" ] || die "No network address found — connect this computer to Wi-Fi first."
+  tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+  cp certs/orbit-root-ca.crt "$tmp/orbit-root-ca.crt"
+  echo
+  echo "  On the phone (same Wi-Fi) open this address; the certificate downloads:"
+  echo "      http://${ip}:${port}/orbit-root-ca.crt"
+  echo
+  echo "  Android (e.g. Pixel):  Settings → Security & privacy → More security & privacy"
+  echo "      → Encryption & credentials → Install a certificate → CA certificate"
+  echo "      → Install anyway → pick the downloaded file (Downloads)."
+  echo "  iPhone:  open it, Settings → Profile Downloaded → Install; then Settings → General"
+  echo "      → About → Certificate Trust Settings → switch on ORBIT/Caddy root."
+  echo
+  echo "  Only the PUBLIC certificate is served. This page stops by itself after 5 minutes (or press Ctrl+C)."
+  echo
+  python3 - "$tmp" "$port" <<'PY'
+import functools, http.server, socketserver, sys, threading
+d, port = sys.argv[1], int(sys.argv[2])
+class H(http.server.SimpleHTTPRequestHandler):
+    extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map, '.crt': 'application/x-x509-ca-cert'}
+    def log_message(self, fmt, *a):
+        print('  phone request:', fmt % a, flush=True)
+socketserver.TCPServer.allow_reuse_address = True
+srv = socketserver.TCPServer(('0.0.0.0', port), functools.partial(H, directory=d))
+threading.Timer(300, srv.shutdown).start()
+try:
+    srv.serve_forever()
+except KeyboardInterrupt:
+    pass
+finally:
+    srv.server_close()
+PY
+  echo "  Download page stopped."
+}
+
+cmd_test() { need_docker; load_env; exec bash tests/file-ops.sh; }
+cmd_logs() { need_docker; docker compose logs -f --tail=100 "$@"; }
+cmd_down() { need_docker; docker compose down; c_ok "Stopped. Data is kept in Docker volumes."; }
+
+cmd_destroy() {
+  need_docker
+  printf 'This DELETES the cloud and ALL stored files. Type "destroy" to continue: '
+  read -r answer; [ "$answer" = "destroy" ] || die "Aborted."
+  docker compose down -v
+  c_ok "Cloud and data removed. (.env and backups/ were left untouched.)"
+}
+
+case "${1:-}" in
+  setup)       cmd_setup ;;
+  up|start)    cmd_up ;;
+  down|stop)   cmd_down ;;
+  status)      cmd_status ;;
+  urls)        cmd_urls ;;
+  credentials) cmd_credentials ;;
+  backup)      cmd_backup ;;
+  restore)     shift; cmd_restore "$@" ;;
+  trust-ca)    cmd_trust_ca ;;
+  share-ca)    cmd_share_ca ;;
+  test)        cmd_test ;;
+  logs)        shift; cmd_logs "$@" ;;
+  destroy)     cmd_destroy ;;
+  *) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac

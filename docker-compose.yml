@@ -1,0 +1,129 @@
+# ORBIT CLOUD — private cloud stack
+#
+#   Clients ──HTTPS──▶ gateway (Caddy) ──▶ app (Nextcloud) ──▶ db (PostgreSQL)
+#                                              │           └──▶ cache (Redis)
+#                                              └── cron (background worker)
+#
+# Only the gateway publishes a port. The database and cache are reachable
+# from inside the private network "orbit-net" only.
+#
+# Do not edit secrets here — they come from .env (created by `./orbit setup`).
+
+name: orbit-cloud
+
+services:
+  # ── Database service (DBaaS) ────────────────────────────────────────────────
+  db:
+    image: postgres:17-alpine
+    container_name: orbit-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Run ./orbit setup first}
+    volumes:
+      - orbit_db:/var/lib/postgresql/data
+    networks: [orbit-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextcloud -d nextcloud"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Cache / file-locking service ────────────────────────────────────────────
+  cache:
+    image: redis:7-alpine
+    container_name: orbit-cache
+    restart: unless-stopped
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --save '' --appendonly no"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Run ./orbit setup first}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    networks: [orbit-net]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Application service (SaaS: file storage, sync, sharing) ─────────────────
+  app:
+    image: nextcloud:${NC_TAG:-34-apache}
+    container_name: orbit-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: cache
+      REDIS_HOST_PASSWORD: ${REDIS_PASSWORD}
+      NEXTCLOUD_ADMIN_USER: ${ADMIN_USER:-orbitadmin}
+      NEXTCLOUD_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Run ./orbit setup first}
+      NEXTCLOUD_TRUSTED_DOMAINS: localhost
+      TRUSTED_PROXIES: ${ORBIT_SUBNET:-172.30.77.0/24}
+      OVERWRITEPROTOCOL: https
+      PHP_MEMORY_LIMIT: 512M
+      PHP_UPLOAD_LIMIT: 4G
+    volumes:
+      - orbit_html:/var/www/html
+      - orbit_data:/var/www/html/data
+    networks: [orbit-net]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost/status.php | grep -q '\"installed\":true'"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 30s
+
+  # ── Background worker (scheduled jobs: cleanup, trash expiry, indexing) ─────
+  cron:
+    image: nextcloud:${NC_TAG:-34-apache}
+    container_name: orbit-cron
+    restart: unless-stopped
+    entrypoint: /cron.sh
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - orbit_html:/var/www/html
+      - orbit_data:/var/www/html/data
+    networks: [orbit-net]
+
+  # ── Gateway (reverse proxy + TLS termination) ───────────────────────────────
+  gateway:
+    build: ./caddy
+    image: orbit-gateway:local
+    container_name: orbit-gateway
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "${BIND_ADDRESS:-0.0.0.0}:${HTTPS_PORT:-8443}:443"
+    environment:
+      ORBIT_HOSTS: ${ORBIT_HOSTS:-localhost}
+      ORBIT_PRIMARY_HOST: ${ORBIT_PRIMARY_HOST:-localhost}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [orbit-net]
+
+networks:
+  orbit-net:
+    name: orbit-net
+    ipam:
+      config:
+        - subnet: ${ORBIT_SUBNET:-172.30.77.0/24}
+
+volumes:
+  orbit_db:
+  orbit_html:
+  orbit_data:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,8 @@
+{
+  "name": "orbit-cloud-tools",
+  "private": true,
+  "description": "Report generator for the ORBIT CLOUD assignment",
+  "dependencies": {
+    "docx": "^9.0.0"
+  }
+}

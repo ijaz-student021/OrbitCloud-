@@ -1,0 +1,5 @@
+ORBIT CLOUD - getting started
+
+1. Put your documents in this folder.
+2. Open the same account from any device to see them.
+3. Share a file with another client from the Share button.

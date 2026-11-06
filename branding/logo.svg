@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- ORBIT CLOUD mark: a cloud with an orbit ring. White on transparent (Nextcloud tints the header). -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M70 178h116a34 34 0 0 0 4-67.7A56 56 0 0 0 82 98a40 40 0 0 0-12 80z" stroke-width="14"/>
+    <ellipse cx="128" cy="140" rx="104" ry="30" transform="rotate(-18 128 140)" stroke-width="8" stroke-dasharray="1 0"/>
+  </g>
+  <circle cx="213" cy="105" r="13" fill="#ffffff"/>
+</svg>
